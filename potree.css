@@ -1,0 +1,25 @@
+
+.thumb{
+	background-size: 128px 128px; 
+	width: 128px; 
+	height: 128px; 
+	border-radius: 5px; 
+	border: 2px solid black; 
+	box-shadow: 3px 3px 3px 0px #555; 
+	margin: 3px; 
+	float: left;
+}
+
+.thumb-label{
+	font-size: large; 
+	text-align: center; 
+	font-weight: bold; 
+	color: #FFF; 
+	text-shadow:black 0 0 5px, black 0 0 5px, black 0 0 5px, black 0 0 5px, black 0 0 5px, black 0 0 5px; 
+	height: 100%;
+}
+
+body {
+  //min-height: 2000px;
+  padding-top: 70px;
+}
