@@ -1,3 +1,4 @@
-theme: jekyll-theme-cayman
+theme: jekyll-theme-tactile
 title: Potree - A WebGL point cloud Viewer
 description:
+show_downloads: false
