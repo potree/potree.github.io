@@ -23,3 +23,44 @@ body {
   //min-height: 2000px;
   padding-top: 70px;
 }
+
+.navbar-icon{
+	padding-top: 8px !important;
+	padding-bottom: 0px !important;
+}
+
+.navbar-icon{
+	padding: 10px 3px !important;
+}
+
+.navbar-right{
+	margin-right: 0px;
+}
+
+table {
+	border-bottom: 1px solid #ddd;
+	margin: 0 0 1.625em;
+	width: 100%;
+}
+
+td {
+	border-top: 1px solid #ddd;
+	padding: 6px 10px 6px 0;
+}
+
+h2.sponsors{ 
+	width:100%; 
+	text-align:center; 
+	border-bottom: 2px solid #CCC; 
+	line-height:0.1em; 
+	margin:10px 0 20px; 
+} 
+
+h2.sponsors > span{ 
+	background:#eee; 
+	padding:0 10px; 
+	color: #AAA;
+	font-size: 18px;
+	font-weight: bold;
+}
+

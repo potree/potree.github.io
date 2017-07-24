@@ -72,103 +72,103 @@ let showcase = [
 		thumb: './thumbnails/showcase/CA13.jpg',
 		title: "CA13"
 	}, {
-		link: "http://potree.org/showcase/chiller.html",
+		link: "./showcase/chiller.html",
 		thumb: './thumbnails/showcase/chiller.jpg',
 		title: "Chiller"
 	}, {
-		link: "http://potree.org/showcase/tern_auscover_chowilla.html",
+		link: "./showcase/tern_auscover_chowilla.html",
 		thumb: './thumbnails/showcase/chowilla.jpg',
 		title: "Chowilla"
 	}, {
-		link: "http://potree.org/showcase/cooler_tower.html",
+		link: "./showcase/cooler_tower.html",
 		thumb: './thumbnails/showcase/cooler_tower.jpg',
 		title: "Cooler"
 	}, {
-		link: "http://potree.org/showcase/dechen_cave.html",
+		link: "./showcase/dechen_cave.html",
 		thumb: './thumbnails/showcase/dechen_cave.jpg',
 		title: "Dechen Cave"
 	}, {
-		link: "http://potree.org/showcase/doverMillRuins.html",
+		link: "./showcase/doverMillRuins.html",
 		thumb: './thumbnails/showcase/DoverMillRuins.jpg',
 		title: "Ruins"
 	}, {
-		link: "http://potree.org/showcase/eclepens.html",
+		link: "./showcase/eclepens.html",
 		thumb: './thumbnails/showcase/eclepens.jpg',
 		title: "Eclepens"
 	}, {
-		link: "http://potree.org/showcase/grab_15.html",
+		link: "./showcase/grab_15.html",
 		thumb: './thumbnails/showcase/grab_15.jpg',
 		title: "Grave"
 	}, {
-		link: "http://potree.org/showcase/heidentor.html",
+		link: "./showcase/heidentor.html",
 		thumb: './thumbnails/showcase/heidentor.jpg',
 		title: "Heidentor"
 	}, {
-		link: "http://potree.org/showcase/lake_tahoe.html",
+		link: "./showcase/lake_tahoe.html",
 		thumb: './thumbnails/showcase/lake_tahoe.jpg',
 		title: "Lake Tahoe"
 	}, {
-		link: "http://potree.org/showcase/land_building.html",
+		link: "./showcase/land_building.html",
 		thumb: './thumbnails/showcase/land_building.jpg',
 		title: "Building"
 	}, {
-		link: "http://potree.org/showcase/LDHI_module.html",
+		link: "./showcase/LDHI_module.html",
 		thumb: './thumbnails/showcase/LDHI_module.jpg',
 		title: "LDHI"
 	}, {
-		link: "http://potree.org/showcase/lifeboat.html",
+		link: "./showcase/lifeboat.html",
 		thumb: './thumbnails/showcase/lifeboat.jpg',
 		title: "Lifeboat"
 	}, {
-		link: "http://potree.org/showcase/lion_head_simone_garagnani.html",
+		link: "./showcase/lion_head_simone_garagnani.html",
 		thumb: './thumbnails/showcase/lion_head.jpg',
 		title: "Lion Head"
 	}, {
-		link: "http://potree.org/showcase/matterhorn.html",
+		link: "./showcase/matterhorn.html",
 		thumb: './thumbnails/showcase/matterhorn.jpg',
 		title: "Matterhorn"
 	}, {
-		link: "http://potree.org/showcase/overpass.html",
+		link: "./showcase/overpass.html",
 		thumb: './thumbnails/showcase/overpass.jpg',
 		title: "Overpass"
 	}, {
-		link: "http://potree.org/showcase/pielach.html",
+		link: "./showcase/pielach.html",
 		thumb: './thumbnails/showcase/pielach.jpg',
 		title: "Pielach"
 	}, {
-		link: "http://potree.org/showcase/pompei.html",
+		link: "./showcase/pompei.html",
 		thumb: './thumbnails/showcase/pompei.jpg',
 		title: "Pompei"
 	}, {
-		link: "http://potree.org/showcase/retz.html",
+		link: "./showcase/retz.html",
 		thumb: './thumbnails/showcase/retz.jpg',
 		title: "Retz"
 	}, {
-		link: "http://potree.org/showcase/santorini.html",
+		link: "./showcase/santorini.html",
 		thumb: './thumbnails/showcase/santorini.jpg',
 		title: "Santorini"
 	}, {
-		link: "http://potree.org/showcase/skatepark.html",
+		link: "./showcase/skatepark.html",
 		thumb: './thumbnails/showcase/skatepark.jpg',
 		title: "Skatepark"
 	}, {
-		link: "http://potree.org/showcase/subsea_equipment.html",
+		link: "./showcase/subsea_equipment.html",
 		thumb: './thumbnails/showcase/subsea_equipment.jpg',
 		title: "Subsea Eq."
 	}, {
-		link: "http://potree.org/showcase/subsea_manifold.html",
+		link: "./showcase/subsea_manifold.html",
 		thumb: './thumbnails/showcase/subseamanifold.jpg',
 		title: "Subsea Man."
 	}, {
-		link: "http://potree.org/showcase/sorvilier.html",
+		link: "./showcase/sorvilier.html",
 		thumb: './thumbnails/showcase/vol_total.jpg',
 		title: "Sorvilier"
 	}, {
-		link: "http://potree.org/showcase/westend_palais.html",
+		link: "./showcase/westend_palais.html",
 		thumb: './thumbnails/showcase/westend_palais.jpg',
 		title: "Westend Palais"
 	}, {
-		link: "http://potree.org/showcase/whitby.html",
+		link: "./showcase/whitby.html",
 		thumb: './thumbnails/showcase/whitby.jpg',
 		title: "Whitby"
 	}
