@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+		<meta name="description" content="">
+		<meta name="author" content="">
+		<link rel="icon" href="../../favicon.ico">
+
+		<title>Potree</title>
+
+		<!-- Bootstrap core CSS -->
+		<link href="libs/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+		<!-- Custom styles for this template -->
+		<link href="potree.css" rel="stylesheet">
+
+	</head>
+
+	<body>
+	
+	<script>
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+	ga('create', 'UA-103025276-1', 'auto');
+	ga('send', 'pageview');
+
+</script>
+	
+		<!-- Fixed navbar -->
+		<nav class="navbar navbar-default navbar-fixed-top">
+			<div class="container">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+						<span class="sr-only">Toggle navigation</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand active" href="index.html">Potree</a>
+				</div>
+				<div id="navbar" class="navbar-collapse collapse">
+					<ul class="nav navbar-nav">
+						<li><a href="download.html">Download</a></li>
+						<li><a href="getting_started.html">Getting Started</a></li>
+						<li><a href="donations.html">Donations</a></li>
+						<li><a href="contact.html">Contact</a></li>
+					</ul>
+			<ul class="nav navbar-nav navbar-right">
+						<li><a class="navbar-icon" href="https://github.com/potree/potree" target="_blank"><img src="resources/github.png"></a></li>
+			<li><a class="navbar-icon" href="https://twitter.com/m_schuetz" target="_blank"><img src="resources/twitter.png"></a></li>
+			<li><a class="navbar-icon" href="https://www.cg.tuwien.ac.at/" target="_blank"><img src="resources/icga.gif" height="33px"></a></li>
+					</ul>
+				</div>
+			</div>
+		</nav>
+	
+	<script src="content.js"></script>
+
+		<div class="container">
+	
+
+
+		
+			
+		<div class="jumbotron">
+		
+		<h2>About</h2>
+		<p>
+		Potree is a free open-source WebGL based point cloud renderer for large point clouds, 
+		developed at the <a href="https://www.cg.tuwien.ac.at/" target="_blank">Institute of Computer Graphics and Algorithms, TU Wien</a>.
+		</p>
+		
+
+
+		<div id="samples_container">
+
+			<div id="thumb_container">
+				<h1>Examples</h1>
+				<script>includeExamples();</script>
+			</div>
+
+			<div id="showcase_container">
+				<h1>Showcase</h1>
+				<script>includeShowcase();</script>
+			</div>
+
+			<div id="external_container">
+				<h1>Third Party</h1>
+				<script>includeThirdparty();</script>
+			</div>
+
+		</div>
+		
+		<br>
+		<h2>References</h2>
+		<p>
+		<ul>
+			<li><a href="https://www.cg.tuwien.ac.at/research/publications/2016/SCHUETZ-2016-POT/SCHUETZ-2016-POT-thesis.pdf" target="_blank">Potree: Rendering Large Point Clouds in Web Browsers, Schuetz</a></li>
+			<li><a href="https://www.cg.tuwien.ac.at/research/publications/2014/scheiblauer-thesis/scheiblauer-thesis-thesis.pdf" target="_blank">Interactions with Gigantic Point Clouds, Scheiblauer</a></li>
+			<li><a href="https://www.cg.tuwien.ac.at/research/publications/2006/WIMMER-2006-IP/WIMMER-2006-IP-Paper.pdf" target="_blank">Instant Points, Wimmer, Scheiblauer</a></li>
+			<li><a href="http://graphics.ucsd.edu/~matthias/Papers/HighQualitySplattingOnGPUs.pdf" target="_blank">High-Quality Surface Splatting on Today’s GPUs, Botsch et al.</a></li>
+		</ul>
+		</p>
+		
+			</div>
+
+		</div> <!-- /container -->
+	
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<script src="libs/bootstrap/js/bootstrap.min.js"></script>
+	</body>
+</html>

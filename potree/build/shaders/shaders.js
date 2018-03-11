@@ -1,59 +1,76 @@
 
 Potree.Shaders["pointcloud.vs"] = `
-precision mediump float;
-precision mediump int;
+precision highp float;
+precision highp int;
 
-
-
-
-#define max_clip_boxes 30
+#define max_clip_polygons 8
+#define PI 3.141592653589793
 
 attribute vec3 position;
 attribute vec3 color;
-attribute vec3 normal;
 attribute float intensity;
 attribute float classification;
 attribute float returnNumber;
 attribute float numberOfReturns;
 attribute float pointSourceID;
 attribute vec4 indices;
-//attribute float indices;
+attribute float spacing;
 
 uniform mat4 modelMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
-uniform mat3 normalMatrix;
 
-uniform float pcIndex;
-
-//uniform mat4 toModel;
-
-uniform float screenWidth;
-uniform float screenHeight;
+uniform float uScreenWidth;
+uniform float uScreenHeight;
 uniform float fov;
-uniform float spacing;
 uniform float near;
 uniform float far;
 
-#if defined use_clip_box
-	uniform mat4 clipBoxes[max_clip_boxes];
+uniform bool uDebug;
+
+uniform bool uUseOrthographicCamera;
+uniform float uOrthoWidth;
+uniform float uOrthoHeight;
+
+
+#define CLIPTASK_NONE 0
+#define CLIPTASK_HIGHLIGHT 1
+#define CLIPTASK_SHOW_INSIDE 2
+#define CLIPTASK_SHOW_OUTSIDE 3
+
+#define CLIPMETHOD_INSIDE_ANY 0
+#define CLIPMETHOD_INSIDE_ALL 1
+
+uniform int clipTask;
+uniform int clipMethod;
+#if defined(num_clipboxes) && num_clipboxes > 0
+	uniform mat4 clipBoxes[num_clipboxes];
 #endif
 
+#if defined(num_clippolygons) && num_clippolygons > 0
+	uniform int uClipPolygonVCount[num_clippolygons];
+	uniform vec3 uClipPolygonVertices[num_clippolygons * 8];
+	uniform mat4 uClipPolygonWVP[num_clippolygons];
+#endif
 
-uniform float heightMin;
-uniform float heightMax;
-uniform float size;				// pixel size factor
-uniform float minSize;			// minimum pixel size
-uniform float maxSize;			// maximum pixel size
-uniform float octreeSize;
-uniform vec3 bbSize;
+uniform float size;
+uniform float minSize;
+uniform float maxSize;
+
+uniform float uPCIndex;
+uniform float uOctreeSpacing;
+uniform float uNodeSpacing;
+uniform float uOctreeSize;
+uniform vec3 uBBSize;
+uniform float uLevel;
+uniform float uVNStart;
+uniform bool uIsLeafNode;
+
 uniform vec3 uColor;
-uniform float opacity;
-uniform float clipBoxCount;
-uniform float level;
-uniform float vnStart;
+uniform float uOpacity;
 
+uniform vec2 elevationRange;
 uniform vec2 intensityRange;
 uniform float intensityGamma;
 uniform float intensityContrast;
@@ -61,7 +78,7 @@ uniform float intensityBrightness;
 uniform float rgbGamma;
 uniform float rgbContrast;
 uniform float rgbBrightness;
-uniform float transition;
+uniform float uTransition;
 uniform float wRGB;
 uniform float wIntensity;
 uniform float wElevation;
@@ -69,20 +86,47 @@ uniform float wClassification;
 uniform float wReturnNumber;
 uniform float wSourceID;
 
+uniform vec3 uShadowColor;
 
 uniform sampler2D visibleNodes;
 uniform sampler2D gradient;
 uniform sampler2D classificationLUT;
-uniform sampler2D depthMap;
 
-varying float	vOpacity;
+#if defined(num_shadowmaps) && num_shadowmaps > 0
+uniform sampler2D uShadowMap[num_shadowmaps];
+uniform mat4 uShadowWorldView[num_shadowmaps];
+uniform mat4 uShadowProj[num_shadowmaps];
+#endif
+
+#if defined(num_snapshots) && num_snapshots > 0
+uniform sampler2D uSnapshot[num_snapshots];
+uniform mat4 uSnapView[num_snapshots];
+uniform mat4 uSnapProj[num_snapshots];
+uniform mat4 uSnapScreenToCurrentView[num_snapshots];
+
+varying float vSnapTextureID;
+#endif
+
 varying vec3	vColor;
-varying float	vLinearDepth;
 varying float	vLogDepth;
 varying vec3	vViewPosition;
 varying float 	vRadius;
-varying vec3	vWorldPosition;
-varying vec3	vNormal;
+varying float 	vPointSize;
+
+
+float round(float number){
+	return floor(number + 0.5);
+}
+
+// 
+//    ###    ########     ###    ########  ######## #### ##     ## ########     ######  #### ######## ########  ######  
+//   ## ##   ##     ##   ## ##   ##     ##    ##     ##  ##     ## ##          ##    ##  ##       ##  ##       ##    ## 
+//  ##   ##  ##     ##  ##   ##  ##     ##    ##     ##  ##     ## ##          ##        ##      ##   ##       ##       
+// ##     ## ##     ## ##     ## ########     ##     ##  ##     ## ######       ######   ##     ##    ######    ######  
+// ######### ##     ## ######### ##           ##     ##   ##   ##  ##                ##  ##    ##     ##             ## 
+// ##     ## ##     ## ##     ## ##           ##     ##    ## ##   ##          ##    ##  ##   ##      ##       ##    ## 
+// ##     ## ########  ##     ## ##           ##    ####    ###    ########     ######  #### ######## ########  ######  
+// 																			
 
 
 // ---------------------
@@ -95,15 +139,22 @@ varying vec3	vNormal;
  * number is treated as if it were an integer in the range 0-255
  *
  */
-float numberOfOnes(float number, float index){
-	float tmp = mod(number, pow(2.0, index + 1.0));
-	float numOnes = 0.0;
-	for(float i = 0.0; i < 8.0; i++){
-		if(mod(tmp, 2.0) != 0.0){
-			numOnes++;
+int numberOfOnes(int number, int index){
+	int numOnes = 0;
+	int tmp = 128;
+	for(int i = 7; i >= 0; i--){
+		
+		if(number >= tmp){
+			number = number - tmp;
+
+			if(i <= index){
+				numOnes++;
+			}
 		}
-		tmp = floor(tmp / 2.0);
+		
+		tmp = tmp / 2;
 	}
+
 	return numOnes;
 }
 
@@ -113,8 +164,33 @@ float numberOfOnes(float number, float index){
  * number is treated as if it were an integer in the range 0-255
  *
  */
-bool isBitSet(float number, float index){
-	return mod(floor(number / pow(2.0, index)), 2.0) != 0.0;
+bool isBitSet(int number, int index){
+
+	// weird multi else if due to lack of proper array, int and bitwise support in WebGL 1.0
+	int powi = 1;
+	if(index == 0){
+		powi = 1;
+	}else if(index == 1){
+		powi = 2;
+	}else if(index == 2){
+		powi = 4;
+	}else if(index == 3){
+		powi = 8;
+	}else if(index == 4){
+		powi = 16;
+	}else if(index == 5){
+		powi = 32;
+	}else if(index == 6){
+		powi = 64;
+	}else if(index == 7){
+		powi = 128;
+	}else{
+		return false;
+	}
+
+	int ndp = number / powi;
+
+	return mod(float(ndp), 2.0) != 0.0;
 }
 
 
@@ -124,35 +200,87 @@ bool isBitSet(float number, float index){
 float getLOD(){
 	
 	vec3 offset = vec3(0.0, 0.0, 0.0);
-	float iOffset = vnStart;
-	float depth = level;
+	int iOffset = int(uVNStart);
+	float depth = uLevel;
 	for(float i = 0.0; i <= 30.0; i++){
-		float nodeSizeAtLevel = octreeSize  / pow(2.0, i + level + 0.0);
+		float nodeSizeAtLevel = uOctreeSize  / pow(2.0, i + uLevel + 0.0);
 		
 		vec3 index3d = (position-offset) / nodeSizeAtLevel;
 		index3d = floor(index3d + 0.5);
-		float index = 4.0 * index3d.x + 2.0 * index3d.y + index3d.z;
+		int index = int(round(4.0 * index3d.x + 2.0 * index3d.y + index3d.z));
 		
-		vec4 value = texture2D(visibleNodes, vec2(iOffset / 2048.0, 0.0));
-		float mask = value.r * 255.0;
+		vec4 value = texture2D(visibleNodes, vec2(float(iOffset) / 2048.0, 0.0));
+		int mask = int(round(value.r * 255.0));
+
 		if(isBitSet(mask, index)){
 			// there are more visible child nodes at this position
-			iOffset = iOffset + value.g * 255.0 * 256.0 + value.b * 255.0 + numberOfOnes(mask, index - 1.0);
+			int advanceG = int(round(value.g * 255.0)) * 256;
+			int advanceB = int(round(value.b * 255.0));
+			int advanceChild = numberOfOnes(mask, index - 1);
+			int advance = advanceG + advanceB + advanceChild;
+
+			iOffset = iOffset + advance;
+			
 			depth++;
 		}else{
 			// no more visible child nodes at this position
-			return depth;
+			return value.a * 255.0;
+			//return depth;
 		}
 		
 		offset = offset + (vec3(1.0, 1.0, 1.0) * nodeSizeAtLevel * 0.5) * index3d;
-        
 	}
 		
 	return depth;
 }
 
+float getSpacing(){
+	vec3 offset = vec3(0.0, 0.0, 0.0);
+	int iOffset = int(uVNStart);
+	float depth = uLevel;
+	float spacing = uNodeSpacing;
+	for(float i = 0.0; i <= 30.0; i++){
+		float nodeSizeAtLevel = uOctreeSize  / pow(2.0, i + uLevel + 0.0);
+		
+		vec3 index3d = (position-offset) / nodeSizeAtLevel;
+		index3d = floor(index3d + 0.5);
+		int index = int(round(4.0 * index3d.x + 2.0 * index3d.y + index3d.z));
+		
+		vec4 value = texture2D(visibleNodes, vec2(float(iOffset) / 2048.0, 0.0));
+		int mask = int(round(value.r * 255.0));
+		float spacingFactor = value.a;
+
+		if(i > 0.0){
+			spacing = spacing / (255.0 * spacingFactor);
+		}
+		
+
+		if(isBitSet(mask, index)){
+			// there are more visible child nodes at this position
+			int advanceG = int(round(value.g * 255.0)) * 256;
+			int advanceB = int(round(value.b * 255.0));
+			int advanceChild = numberOfOnes(mask, index - 1);
+			int advance = advanceG + advanceB + advanceChild;
+
+			iOffset = iOffset + advance;
+
+			//spacing = spacing / (255.0 * spacingFactor);
+			//spacing = spacing / 3.0;
+			
+			depth++;
+		}else{
+			// no more visible child nodes at this position
+			return spacing;
+		}
+		
+		offset = offset + (vec3(1.0, 1.0, 1.0) * nodeSizeAtLevel * 0.5) * index3d;
+	}
+		
+	return spacing;
+}
+
 float getPointSizeAttenuation(){
-	return pow(1.9, getLOD());
+	return pow(2.0, getLOD());
 }
 
 
@@ -171,7 +299,7 @@ float getLOD(){
 	float depth = 0.0;
 		
 		
-	vec3 size = bbSize;	
+	vec3 size = uBBSize;	
 	vec3 pos = position;
 		
 	for(float i = 0.0; i <= 1000.0; i++){
@@ -199,19 +327,19 @@ float getLOD(){
 		
 		float factor = length(pos * splitv / size);
 		if(factor < 0.5){
-		 	// left
-		    if(children == 0 || children == 2){
-		    	return depth;
-		    }
+			// left
+		if(children == 0 || children == 2){
+				return depth;
+			}
 		}else{
-		  	// right
-		    pos = pos - size * splitv * 0.5;
-		    if(children == 0 || children == 1){
-		    	return depth;
-		    }
-		    if(children == 3){
-		    	iOffset = iOffset + 1.0;
-		    }
+			// right
+			pos = pos - size * splitv * 0.5;
+			if(children == 0 || children == 1){
+				return depth;
+			}
+			if(children == 3){
+				iOffset = iOffset + 1.0;
+			}
 		}
 		size = size * ((1.0 - (splitv + 1.0) / 2.0) + 0.5);
 		
@@ -228,6 +356,20 @@ float getPointSizeAttenuation(){
 
 #endif
 
+
+
+// 
+//    ###    ######## ######## ########  #### ########  ##     ## ######## ########  ######  
+//   ## ##      ##       ##    ##     ##  ##  ##     ## ##     ##    ##    ##       ##    ## 
+//  ##   ##     ##       ##    ##     ##  ##  ##     ## ##     ##    ##    ##       ##       
+// ##     ##    ##       ##    ########   ##  ########  ##     ##    ##    ######    ######  
+// #########    ##       ##    ##   ##    ##  ##     ## ##     ##    ##    ##             ## 
+// ##     ##    ##       ##    ##    ##   ##  ##     ## ##     ##    ##    ##       ##    ## 
+// ##     ##    ##       ##    ##     ## #### ########   #######     ##    ########  ######                                                                               
+// 
+
+
+
 // formula adapted from: http://www.dfstudios.co.uk/articles/programming/image-programming-algorithms/image-processing-algorithms-part-5-contrast-adjustment/
 float getContrastFactor(float contrast){
 	return (1.0158730158730156 * (contrast + 1.0)) / (1.0158730158730156 - contrast);
@@ -238,10 +380,10 @@ vec3 getRGB(){
 	
 	rgb = pow(rgb, vec3(rgbGamma));
 	rgb = rgb + rgbBrightness;
-	rgb = (rgb - 0.5) * getContrastFactor(rgbContrast) + 0.5;
+	//rgb = (rgb - 0.5) * getContrastFactor(rgbContrast) + 0.5;
 	rgb = clamp(rgb, 0.0, 1.0);
-	
-	//rgb = indices.rgb;
+
+		//rgb = indices.rgb;
 	//rgb.b = pcIndex / 255.0;
 	
 	
@@ -254,13 +396,17 @@ float getIntensity(){
 	w = w + intensityBrightness;
 	w = (w - 0.5) * getContrastFactor(intensityContrast) + 0.5;
 	w = clamp(w, 0.0, 1.0);
+
+	//w = w + color.x * 0.0001;
 	
+	//float w = color.x * 0.001 + intensity / 1.0;
+
 	return w;
 }
 
 vec3 getElevation(){
 	vec4 world = modelMatrix * vec4( position, 1.0 );
-	float w = (world.z - heightMin) / (heightMax-heightMin);
+	float w = (world.z - elevationRange.x) / (elevationRange.y - elevationRange.x);
 	vec3 cElevation = texture2D(gradient, vec2(w,1.0-w)).rgb;
 	
 	return cElevation;
@@ -325,178 +471,373 @@ vec3 getCompositeColor(){
 	return c;
 }
 
-void main() {
-	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-	vViewPosition = mvPosition.xyz;
-	gl_Position = projectionMatrix * mvPosition;
-	vOpacity = opacity;
-	vLinearDepth = gl_Position.w;
-	vLogDepth = log2(gl_Position.w);
-	vNormal = normalize(normalMatrix * normal);
 
-	// ---------------------
-	// POINT COLOR
-	// ---------------------
-	vec4 cl = getClassification(); 
+// 
+//  ######  ##       #### ########  ########  #### ##    ##  ######   
+// ##    ## ##        ##  ##     ## ##     ##  ##  ###   ## ##    ##  
+// ##       ##        ##  ##     ## ##     ##  ##  ####  ## ##        
+// ##       ##        ##  ########  ########   ##  ## ## ## ##   #### 
+// ##       ##        ##  ##        ##         ##  ##  #### ##    ##  
+// ##    ## ##        ##  ##        ##         ##  ##   ### ##    ##  
+//  ######  ######## #### ##        ##        #### ##    ##  ######                                                          
+// 
+
+
+
+vec3 getColor(){
+	vec3 color;
 	
 	#ifdef color_type_rgb
-		vColor = getRGB();
+		color = getRGB();
 	#elif defined color_type_height
-		vColor = getElevation();
+		color = getElevation();
 	#elif defined color_type_rgb_height
 		vec3 cHeight = getElevation();
-		vColor = (1.0 - transition) * getRGB() + transition * cHeight;
+		color = (1.0 - uTransition) * getRGB() + uTransition * cHeight;
 	#elif defined color_type_depth
-		float linearDepth = -mvPosition.z ;
+		float linearDepth = gl_Position.w;
 		float expDepth = (gl_Position.z / gl_Position.w) * 0.5 + 0.5;
-		vColor = vec3(linearDepth, expDepth, 0.0);
+		color = vec3(linearDepth, expDepth, 0.0);
 	#elif defined color_type_intensity
 		float w = getIntensity();
-		vColor = vec3(w, w, w);
+		color = vec3(w, w, w);
 	#elif defined color_type_intensity_gradient
 		float w = getIntensity();
-		vColor = texture2D(gradient, vec2(w,1.0-w)).rgb;
+		color = texture2D(gradient, vec2(w,1.0-w)).rgb;
 	#elif defined color_type_color
-		vColor = uColor;
+		color = uColor;
 	#elif defined color_type_lod
 		float depth = getLOD();
-		float w = depth / 5.0;
-		vColor = texture2D(gradient, vec2(w,1.0-w)).rgb;
+		float w = depth / 10.0;
+		color = texture2D(gradient, vec2(w,1.0-w)).rgb;
 	#elif defined color_type_point_index
-		//vColor = indices.rgb * 255.0;
-		vColor = indices.rgb;
-		
-		//vColor.r = mod(indices, 256.0) / 255.0;
-		//vColor.g = mod(indices / 256.0, 256.0) / 255.0;
-		//vColor.b = 0.0;
-		
+		color = indices.rgb;
 	#elif defined color_type_classification
-		vColor = cl.rgb;
+		vec4 cl = getClassification(); 
+		color = cl.rgb;
 	#elif defined color_type_return_number
-		vColor = getReturnNumber();
+		color = getReturnNumber();
 	#elif defined color_type_source
-		vColor = getSourceID();
+		color = getSourceID();
 	#elif defined color_type_normal
-		vColor = (modelMatrix * vec4(normal, 0.0)).xyz;
+		color = (modelMatrix * vec4(normal, 0.0)).xyz;
 	#elif defined color_type_phong
-		vColor = color;
+		color = color;
 	#elif defined color_type_composite
-		vColor = getCompositeColor();
+		color = getCompositeColor();
 	#endif
 	
-	#if !defined color_type_composite
-		if(cl.a == 0.0){
-			gl_Position = vec4(100.0, 100.0, 100.0, 0.0);
-			
-			return;
-		}
-	#endif
-	
-	// ---------------------
-	// POINT SIZE
-	// ---------------------
+	return color;
+}
+
+float getPointSize(){
 	float pointSize = 1.0;
 	
 	float slope = tan(fov / 2.0);
-	float projFactor =  -0.5 * screenHeight / (slope * vViewPosition.z);
+	float projFactor = -0.5 * uScreenHeight / (slope * vViewPosition.z);
 	
-	float r = spacing * 1.5;
+	//float size = spacing * 0.01;
+
+	float r = uOctreeSpacing * 1.5;
 	vRadius = r;
 	#if defined fixed_point_size
 		pointSize = size;
 	#elif defined attenuated_point_size
-		pointSize = size * projFactor;
+		if(uUseOrthographicCamera){
+			pointSize = size;
+		}else{
+			pointSize = size * spacing * projFactor;
+			//pointSize = pointSize * projFactor;
+		}
 	#elif defined adaptive_point_size
-		float worldSpaceSize = size * r / getPointSizeAttenuation();
-		pointSize = worldSpaceSize * projFactor;
+		if(uUseOrthographicCamera) {
+			float worldSpaceSize = 1.0 * size * r / getPointSizeAttenuation();
+			pointSize = (worldSpaceSize / uOrthoWidth) * uScreenWidth;
+		} else {
+
+			if(uIsLeafNode && false){
+				pointSize = size * spacing * projFactor;
+			}else{
+				float worldSpaceSize = 1.0 * size * r / getPointSizeAttenuation();
+				pointSize = worldSpaceSize * projFactor;
+			}
+		}
 	#endif
 
 	pointSize = max(minSize, pointSize);
 	pointSize = min(maxSize, pointSize);
 	
 	vRadius = pointSize / projFactor;
-	
-	gl_PointSize = pointSize;
-	
-	//gl_Position = vec4(1000.0, 1000.0, 1000.0, 1.0);
-	
-	
-	// ---------------------
-	// CLIPPING
-	// ---------------------
-	
-	#if defined use_clip_box
-		bool insideAny = false;
-		for(int i = 0; i < max_clip_boxes; i++){
-			if(i == int(clipBoxCount)){
-				break;
-			}
-		
+
+	return pointSize;
+}
+
+#if defined(num_clippolygons) && num_clippolygons > 0
+bool pointInClipPolygon(vec3 point, int polyIdx) {
+
+	mat4 wvp = uClipPolygonWVP[polyIdx];
+	//vec4 screenClipPos = uClipPolygonVP[polyIdx] * modelMatrix * vec4(point, 1.0);
+	//screenClipPos.xy = screenClipPos.xy / screenClipPos.w * 0.5 + 0.5;
+
+	vec4 pointNDC = wvp * vec4(point, 1.0);
+	pointNDC.xy = pointNDC.xy / pointNDC.w;
+
+	int j = uClipPolygonVCount[polyIdx] - 1;
+	bool c = false;
+	for(int i = 0; i < 8; i++) {
+		if(i == uClipPolygonVCount[polyIdx]) {
+			break;
+		}
+
+		//vec4 verti = wvp * vec4(uClipPolygonVertices[polyIdx * 8 + i], 1);
+		//vec4 vertj = wvp * vec4(uClipPolygonVertices[polyIdx * 8 + j], 1);
+
+		//verti.xy = verti.xy / verti.w;
+		//vertj.xy = vertj.xy / vertj.w;
+
+		//verti.xy = verti.xy / verti.w * 0.5 + 0.5;
+		//vertj.xy = vertj.xy / vertj.w * 0.5 + 0.5;
+
+		vec3 verti = uClipPolygonVertices[polyIdx * 8 + i];
+		vec3 vertj = uClipPolygonVertices[polyIdx * 8 + j];
+
+		if( ((verti.y > pointNDC.y) != (vertj.y > pointNDC.y)) && 
+			(pointNDC.x < (vertj.x-verti.x) * (pointNDC.y-verti.y) / (vertj.y-verti.y) + verti.x) ) {
+			c = !c;
+		}
+		j = i;
+	}
+
+	return c;
+}
+#endif
+
+void doClipping(){
+
+	#if !defined color_type_composite
+		vec4 cl = getClassification(); 
+		if(cl.a == 0.0){
+			gl_Position = vec4(100.0, 100.0, 100.0, 0.0);
+			
+			return;
+		}
+	#endif
+
+	int clipVolumesCount = 0;
+	int insideCount = 0;
+
+	#if defined(num_clipboxes) && num_clipboxes > 0
+		for(int i = 0; i < num_clipboxes; i++){
 			vec4 clipPosition = clipBoxes[i] * modelMatrix * vec4( position, 1.0 );
 			bool inside = -0.5 <= clipPosition.x && clipPosition.x <= 0.5;
 			inside = inside && -0.5 <= clipPosition.y && clipPosition.y <= 0.5;
 			inside = inside && -0.5 <= clipPosition.z && clipPosition.z <= 0.5;
-			insideAny = insideAny || inside;
-		}
-		if(!insideAny){
-	
-			#if defined clip_outside
-				gl_Position = vec4(1000.0, 1000.0, 1000.0, 1.0);
-			#elif defined clip_highlight_inside && !defined(color_type_depth)
-				float c = (vColor.r + vColor.g + vColor.b) / 6.0;
-			#endif
-		}else{
-			#if defined clip_highlight_inside
-				vColor.r += 0.5;
-				
-				//vec3 hsv = rgb2hsv(vColor);
-            	//hsv.x = hsv.x - 0.3;
-            	//hsv.z = hsv.z + 0.1;
-            	//vColor = hsv2rgb(hsv);
-				
-			#endif
+
+			insideCount = insideCount + (inside ? 1 : 0);
+			clipVolumesCount++;
+		}	
+	#endif
+
+	#if defined(num_clippolygons) && num_clippolygons > 0
+		for(int i = 0; i < num_clippolygons; i++) {
+			bool inside = pointInClipPolygon(position, i);
+
+			insideCount = insideCount + (inside ? 1 : 0);
+			clipVolumesCount++;
 		}
 	#endif
 
-	//vColor = indices.rgb * 255.0;
+	bool insideAny = insideCount > 0;
+	bool insideAll = (clipVolumesCount > 0) && (clipVolumesCount == insideCount);
+
+	if(clipMethod == CLIPMETHOD_INSIDE_ANY){
+		if(insideAny && clipTask == CLIPTASK_HIGHLIGHT){
+			vColor.r += 0.5;
+		}else if(!insideAny && clipTask == CLIPTASK_SHOW_INSIDE){
+			gl_Position = vec4(100.0, 100.0, 100.0, 1.0);
+		}else if(insideAny && clipTask == CLIPTASK_SHOW_OUTSIDE){
+			gl_Position = vec4(100.0, 100.0, 100.0, 1.0);
+		}
+	}else if(clipMethod == CLIPMETHOD_INSIDE_ALL){
+		if(insideAll && clipTask == CLIPTASK_HIGHLIGHT){
+			vColor.r += 0.5;
+		}else if(!insideAll && clipTask == CLIPTASK_SHOW_INSIDE){
+			gl_Position = vec4(100.0, 100.0, 100.0, 1.0);
+		}else if(insideAll && clipTask == CLIPTASK_SHOW_OUTSIDE){
+			gl_Position = vec4(100.0, 100.0, 100.0, 1.0);
+		}
+	}
+}
+
+
+
+// 
+// ##     ##    ###    #### ##    ## 
+// ###   ###   ## ##    ##  ###   ## 
+// #### ####  ##   ##   ##  ####  ## 
+// ## ### ## ##     ##  ##  ## ## ## 
+// ##     ## #########  ##  ##  #### 
+// ##     ## ##     ##  ##  ##   ### 
+// ##     ## ##     ## #### ##    ## 
+//
+
+void main() {
+	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+	vViewPosition = mvPosition.xyz;
+	gl_Position = projectionMatrix * mvPosition;
+	vLogDepth = log2(-mvPosition.z);
+
+	// POINT SIZE
+	float pointSize = getPointSize();
+	gl_PointSize = pointSize;
+	vPointSize = pointSize;
+
+	// COLOR
+	vColor = getColor();
+
+
+	#if defined hq_depth_pass
+		float originalDepth = gl_Position.w;
+		float adjustedDepth = originalDepth + 2.0 * vRadius;
+		float adjust = adjustedDepth / originalDepth;
+
+		mvPosition.xyz = mvPosition.xyz * adjust;
+		gl_Position = projectionMatrix * mvPosition;
+	#endif
+
+
+	// CLIPPING
+	doClipping();
 	
+
+
+
+
+	//#if defined(num_snapshots) && num_snapshots > 0
+
+	//	for(int i = 0; i < num_snapshots; i++){
+	//		vSnapProjected[i] = uSnapProj[i] * uSnapView[i] * modelMatrix * vec4(position, 1.0);	
+	//		vSnapProjectedDistance[i] = -(uSnapView[i] * modelMatrix * vec4(position, 1.0)).z;
+	//	}
+	//	
+	//#endif
+
+	#if defined(num_shadowmaps) && num_shadowmaps > 0
+
+		const float sm_near = 0.1;
+		const float sm_far = 10000.0;
+
+		for(int i = 0; i < num_shadowmaps; i++){
+			vec3 viewPos = (uShadowWorldView[i] * vec4(position, 1.0)).xyz;
+			float distanceToLight = abs(viewPos.z);
+			
+			vec4 projPos = uShadowProj[i] * uShadowWorldView[i] * vec4(position, 1);
+			vec3 nc = projPos.xyz / projPos.w;
+			
+			float u = nc.x * 0.5 + 0.5;
+			float v = nc.y * 0.5 + 0.5;
+
+			vec2 sampleStep = vec2(1.0 / (2.0*1024.0), 1.0 / (2.0*1024.0)) * 1.5;
+			vec2 sampleLocations[9];
+			sampleLocations[0] = vec2(0.0, 0.0);
+			sampleLocations[1] = sampleStep;
+			sampleLocations[2] = -sampleStep;
+			sampleLocations[3] = vec2(sampleStep.x, -sampleStep.y);
+			sampleLocations[4] = vec2(-sampleStep.x, sampleStep.y);
+
+			sampleLocations[5] = vec2(0.0, sampleStep.y);
+			sampleLocations[6] = vec2(0.0, -sampleStep.y);
+			sampleLocations[7] = vec2(sampleStep.x, 0.0);
+			sampleLocations[8] = vec2(-sampleStep.x, 0.0);
+
+			float visibleSamples = 0.0;
+			float numSamples = 0.0;
+
+			float bias = vRadius * 2.0;
+
+			for(int j = 0; j < 9; j++){
+				vec4 depthMapValue = texture2D(uShadowMap[i], vec2(u, v) + sampleLocations[j]);
+
+				float linearDepthFromSM = depthMapValue.x + bias;
+				float linearDepthFromViewer = distanceToLight;
+
+				if(linearDepthFromSM > linearDepthFromViewer){
+					visibleSamples += 1.0;
+				}
+
+				numSamples += 1.0;
+			}
+
+			float visibility = visibleSamples / numSamples;
+
+			if(u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0 || nc.x < -1.0 || nc.x > 1.0 || nc.y < -1.0 || nc.y > 1.0 || nc.z < -1.0 || nc.z > 1.0){
+				//vColor = vec3(0.0, 0.0, 0.2);
+			}else{
+				//vColor = vec3(1.0, 1.0, 1.0) * visibility + vec3(1.0, 1.0, 1.0) * vec3(0.5, 0.0, 0.0) * (1.0 - visibility);
+				vColor = vColor * visibility + vColor * uShadowColor * (1.0 - visibility);
+			}
+		}
+
+	#endif
+
+	if(uDebug){
+		vColor.b = (vColor.r + vColor.g + vColor.b) / 3.0;
+		vColor.r = 1.0;
+		vColor.g = 1.0;
+	}
+
 }
 `
 
 Potree.Shaders["pointcloud.fs"] = `
-precision mediump float;
-precision mediump int;
-
 #if defined paraboloid_point_shape
 	#extension GL_EXT_frag_depth : enable
 #endif
 
+precision highp float;
+precision highp int;
+
 uniform mat4 viewMatrix;
+uniform mat4 uViewInv;
+uniform mat4 uProjInv;
 uniform vec3 cameraPosition;
 
 
 uniform mat4 projectionMatrix;
-uniform float opacity;
+uniform float uOpacity;
 
 uniform float blendHardness;
 uniform float blendDepthSupplement;
 uniform float fov;
-uniform float spacing;
+uniform float uSpacing;
 uniform float near;
 uniform float far;
-uniform float pcIndex;
-uniform float screenWidth;
-uniform float screenHeight;
-
-uniform sampler2D depthMap;
+uniform float uPCIndex;
+uniform float uScreenWidth;
+uniform float uScreenHeight;
 
 varying vec3	vColor;
-varying float	vOpacity;
-varying float	vLinearDepth;
 varying float	vLogDepth;
 varying vec3	vViewPosition;
 varying float	vRadius;
-varying vec3	vNormal;
+varying float 	vPointSize;
+varying vec3 	vPosition;
+
+#if defined(num_snapshots) && num_snapshots > 0
+uniform sampler2D uSnapshot[num_snapshots];
+uniform sampler2D uSnapshotDepth[num_snapshots];
+uniform mat4 uSnapView[num_snapshots];
+uniform mat4 uSnapProj[num_snapshots];
+uniform mat4 uSnapProjInv[num_snapshots];
+uniform mat4 uSnapViewInv[num_snapshots];
+
+varying float vSnapTextureID;
+#endif
+
+
+
+
+
 
 float specularStrength = 1.0;
 
@@ -505,167 +846,77 @@ void main() {
 	vec3 color = vColor;
 	float depth = gl_FragCoord.z;
 
-	#if defined(circle_point_shape) || defined(paraboloid_point_shape) || defined (weighted_splats)
+
+	//#if defined(num_snapshots) && num_snapshots > 0
+	//	vec3 sRGB = vec3(0.0, 0.0, 0.0);
+	//	float sA = 0.0;
+
+	//	for(int i = 0; i < num_snapshots; i++){
+
+	//		float snapLinearDistance = 0.0;
+	//		float currentLinearDistance = vSnapProjectedDistance[i];
+	//		vec2 uv;
+
+	//		{
+	//			vec2 pc = vec2(gl_PointCoord.x - 0.5, (1.0 - gl_PointCoord.y) - 0.5);
+	//			vec2 offset = (pc * vPointSize) / vec2(uScreenWidth, uScreenHeight);
+	//	
+	//			uv = 0.5 * (vSnapProjected[i].xy /vSnapProjected[i].w) + 0.5 + offset;	
+	//			
+	//			vec4 td = texture2D(uSnapshotDepth[i], uv);
+	//			float d = td.r;
+
+	//			// TODO save linear distance in uSnapshotDepth!!!
+	//			vec4 snapViewPos = uSnapProjInv[i] * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+	//			snapViewPos = snapViewPos / snapViewPos.w;
+	//			snapLinearDistance = -snapViewPos.z;
+
+	//		}
+
+	//		if(abs(currentLinearDistance - snapLinearDistance) < vRadius * 1.0){
+	//			vec4 col = texture2D(uSnapshot[i], uv);
+	//			//vec4 col = vec4(0.5, 1.0, 0.0, 1.0);
+	//			sRGB += col.rgb;
+
+	//			if(col.a != 0.0){
+	//				sA = sA + 1.0;
+	//			}
+	//		}else{
+	//			//sRGB += vColor;
+	//			//sA += 1.0;
+	//			
+	//		}
+
+	//	}
+
+
+	//	color = sRGB / sA;
+	//	if(sA == 0.0){
+	//		//color = vColor;
+	//		discard;
+	//	}
+	//
+	//#endif
+
+
+	#if defined(circle_point_shape) || defined(paraboloid_point_shape) 
 		float u = 2.0 * gl_PointCoord.x - 1.0;
 		float v = 2.0 * gl_PointCoord.y - 1.0;
 	#endif
 	
-	#if defined(circle_point_shape) || defined (weighted_splats)
+	#if defined(circle_point_shape) 
 		float cc = u*u + v*v;
 		if(cc > 1.0){
 			discard;
 		}
 	#endif
-	
-	#if defined weighted_splats
-		vec2 uv = gl_FragCoord.xy / vec2(screenWidth, screenHeight);
-		float sDepth = texture2D(depthMap, uv).r;
-		if(vLinearDepth > sDepth + vRadius + blendDepthSupplement){
-			discard;
-		}
-	#endif
 		
 	#if defined color_type_point_index
-		gl_FragColor = vec4(color, pcIndex / 255.0);
+		gl_FragColor = vec4(color, uPCIndex / 255.0);
 	#else
-		gl_FragColor = vec4(color, vOpacity);
+		gl_FragColor = vec4(color, uOpacity);
 	#endif
 
-	vec3 normal = normalize( vNormal );
-	normal.z = abs(normal.z);
-	vec3 viewPosition = normalize( vViewPosition );
-	
-	#if defined(color_type_phong)
-
-	// code taken from three.js phong light fragment shader
-	
-		#if MAX_POINT_LIGHTS > 0
-
-			vec3 pointDiffuse = vec3( 0.0 );
-			vec3 pointSpecular = vec3( 0.0 );
-
-			for ( int i = 0; i < MAX_POINT_LIGHTS; i ++ ) {
-
-				vec4 lPosition = viewMatrix * vec4( pointLightPosition[ i ], 1.0 );
-				vec3 lVector = lPosition.xyz + vViewPosition.xyz;
-
-				float lDistance = 1.0;
-				if ( pointLightDistance[ i ] > 0.0 )
-					lDistance = 1.0 - min( ( length( lVector ) / pointLightDistance[ i ] ), 1.0 );
-
-				lVector = normalize( lVector );
-
-						// diffuse
-
-				float dotProduct = dot( normal, lVector );
-
-				#ifdef WRAP_AROUND
-
-					float pointDiffuseWeightFull = max( dotProduct, 0.0 );
-					float pointDiffuseWeightHalf = max( 0.5 * dotProduct + 0.5, 0.0 );
-
-					vec3 pointDiffuseWeight = mix( vec3( pointDiffuseWeightFull ), vec3( pointDiffuseWeightHalf ), wrapRGB );
-
-				#else
-
-					float pointDiffuseWeight = max( dotProduct, 0.0 );
-
-				#endif
-
-				pointDiffuse += diffuse * pointLightColor[ i ] * pointDiffuseWeight * lDistance;
-
-						// specular
-
-				vec3 pointHalfVector = normalize( lVector + viewPosition );
-				float pointDotNormalHalf = max( dot( normal, pointHalfVector ), 0.0 );
-				float pointSpecularWeight = specularStrength * max( pow( pointDotNormalHalf, shininess ), 0.0 );
-
-				float specularNormalization = ( shininess + 2.0 ) / 8.0;
-
-				vec3 schlick = specular + vec3( 1.0 - specular ) * pow( max( 1.0 - dot( lVector, pointHalfVector ), 0.0 ), 5.0 );
-				pointSpecular += schlick * pointLightColor[ i ] * pointSpecularWeight * pointDiffuseWeight * lDistance * specularNormalization;
-				pointSpecular = vec3(0.0, 0.0, 0.0);
-			}
-		
-		#endif
-		
-		#if MAX_DIR_LIGHTS > 0
-
-			vec3 dirDiffuse = vec3( 0.0 );
-			vec3 dirSpecular = vec3( 0.0 );
-
-			for( int i = 0; i < MAX_DIR_LIGHTS; i ++ ) {
-
-				vec4 lDirection = viewMatrix * vec4( directionalLightDirection[ i ], 0.0 );
-				vec3 dirVector = normalize( lDirection.xyz );
-
-						// diffuse
-
-				float dotProduct = dot( normal, dirVector );
-
-				#ifdef WRAP_AROUND
-
-					float dirDiffuseWeightFull = max( dotProduct, 0.0 );
-					float dirDiffuseWeightHalf = max( 0.5 * dotProduct + 0.5, 0.0 );
-
-					vec3 dirDiffuseWeight = mix( vec3( dirDiffuseWeightFull ), vec3( dirDiffuseWeightHalf ), wrapRGB );
-
-				#else
-
-					float dirDiffuseWeight = max( dotProduct, 0.0 );
-
-				#endif
-
-				dirDiffuse += diffuse * directionalLightColor[ i ] * dirDiffuseWeight;
-
-				// specular
-
-				vec3 dirHalfVector = normalize( dirVector + viewPosition );
-				float dirDotNormalHalf = max( dot( normal, dirHalfVector ), 0.0 );
-				float dirSpecularWeight = specularStrength * max( pow( dirDotNormalHalf, shininess ), 0.0 );
-
-				float specularNormalization = ( shininess + 2.0 ) / 8.0;
-
-				vec3 schlick = specular + vec3( 1.0 - specular ) * pow( max( 1.0 - dot( dirVector, dirHalfVector ), 0.0 ), 5.0 );
-				dirSpecular += schlick * directionalLightColor[ i ] * dirSpecularWeight * dirDiffuseWeight * specularNormalization;
-			}
-
-		#endif
-		
-		vec3 totalDiffuse = vec3( 0.0 );
-		vec3 totalSpecular = vec3( 0.0 );
-		
-		#if MAX_POINT_LIGHTS > 0
-
-			totalDiffuse += pointDiffuse;
-			totalSpecular += pointSpecular;
-
-		#endif
-		
-		#if MAX_DIR_LIGHTS > 0
-
-			totalDiffuse += dirDiffuse;
-			totalSpecular += dirSpecular;
-
-		#endif
-		
-		gl_FragColor.xyz = gl_FragColor.xyz * ( emissive + totalDiffuse + ambientLightColor * ambient ) + totalSpecular;
-
-	#endif
-	
-	#if defined weighted_splats
-	    //float w = pow(1.0 - (u*u + v*v), blendHardness);
-		
-		float wx = 2.0 * length(2.0 * gl_PointCoord - 1.0);
-		float w = exp(-wx * wx * 0.5);
-		
-		//float distance = length(2.0 * gl_PointCoord - 1.0);
-		//float w = exp( -(distance * distance) / blendHardness);
-		
-		gl_FragColor.rgb = gl_FragColor.rgb * w;
-		gl_FragColor.a = w;
-	#endif
-	
 	#if defined paraboloid_point_shape
 		float wi = 0.0 - ( u*u + v*v);
 		vec4 pos = vec4(vViewPosition, 1.0);
@@ -691,12 +942,178 @@ void main() {
 			gl_FragColor.a = vLogDepth;
 		#endif
 	#endif
+
+	#if defined(weighted_splats)
+		float distance = 2.0 * length(gl_PointCoord.xy - 0.5);
+		float weight = max(0.0, 1.0 - distance);
+		weight = pow(weight, 1.5);
+
+		gl_FragColor.a = weight;
+		gl_FragColor.xyz = gl_FragColor.xyz * weight;
+	#endif
 	
+}
+
+
+`
+
+Potree.Shaders["pointcloud_sm.vs"] = `
+precision mediump float;
+precision mediump int;
+
+attribute vec3 position;
+attribute vec3 color;
+
+uniform mat4 modelMatrix;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+
+uniform float uScreenWidth;
+uniform float uScreenHeight;
+uniform float near;
+uniform float far;
+
+uniform float uSpacing;
+uniform float uOctreeSize;
+uniform float uLevel;
+uniform float uVNStart;
+
+uniform sampler2D visibleNodes;
+
+varying float vLinearDepth;
+varying vec3 vColor;
+
+#define PI 3.141592653589793
+
+
+
+// ---------------------
+// OCTREE
+// ---------------------
+
+#if defined(adaptive_point_size)
+/**
+ * number of 1-bits up to inclusive index position
+ * number is treated as if it were an integer in the range 0-255
+ *
+ */
+float numberOfOnes(float number, float index){
+	float tmp = mod(number, pow(2.0, index + 1.0));
+	float numOnes = 0.0;
+	for(float i = 0.0; i < 8.0; i++){
+		if(mod(tmp, 2.0) != 0.0){
+			numOnes++;
+		}
+		tmp = floor(tmp / 2.0);
+	}
+	return numOnes;
+}
+
+
+/**
+ * checks whether the bit at index is 1
+ * number is treated as if it were an integer in the range 0-255
+ *
+ */
+bool isBitSet(float number, float index){
+	return mod(floor(number / pow(2.0, index)), 2.0) != 0.0;
+}
+
+
+/**
+ * find the LOD at the point position
+ */
+float getLOD(){
 	
+	vec3 offset = vec3(0.0, 0.0, 0.0);
+	float iOffset = uVNStart;
+	float depth = uLevel;
+	for(float i = 0.0; i <= 30.0; i++){
+		float nodeSizeAtLevel = uOctreeSize  / pow(2.0, i + uLevel + 0.0);
 		
+		vec3 index3d = (position-offset) / nodeSizeAtLevel;
+		index3d = floor(index3d + 0.5);
+		float index = 4.0 * index3d.x + 2.0 * index3d.y + index3d.z;
+		
+		vec4 value = texture2D(visibleNodes, vec2(iOffset / 2048.0, 0.0));
+		float mask = value.r * 255.0;
+		if(isBitSet(mask, index)){
+			// there are more visible child nodes at this position
+			iOffset = iOffset + value.g * 255.0 * 256.0 + value.b * 255.0 + numberOfOnes(mask, index - 1.0);
+			depth++;
+		}else{
+			// no more visible child nodes at this position
+			return depth;
+		}
+		
+		offset = offset + (vec3(1.0, 1.0, 1.0) * nodeSizeAtLevel * 0.5) * index3d;
+	}
+		
+	return depth;
+}
+
+#endif
+
+float getPointSize(){
+	float pointSize = 1.0;
 	
+	float slope = tan(fov / 2.0);
+	float projFactor =  -0.5 * uScreenHeight / (slope * vViewPosition.z);
 	
+	float r = uOctreeSpacing * 1.5;
+	vRadius = r;
+	#if defined fixed_point_size
+		pointSize = size;
+	#elif defined attenuated_point_size
+		if(uUseOrthographicCamera){
+			pointSize = size;			
+		}else{
+			pointSize = pointSize * projFactor;
+		}
+	#elif defined adaptive_point_size
+		if(uUseOrthographicCamera) {
+			float worldSpaceSize = 1.5 * size * r / getPointSizeAttenuation();
+			pointSize = (worldSpaceSize / uOrthoWidth) * uScreenWidth;
+		} else {
+			float worldSpaceSize = 1.5 * size * r / getPointSizeAttenuation();
+			pointSize = worldSpaceSize * projFactor;
+		}
+	#endif
+
+	pointSize = max(minSize, pointSize);
+	pointSize = min(maxSize, pointSize);
 	
+	vRadius = pointSize / projFactor;
+
+	return pointSize;
+}
+
+
+void main() {
+
+	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+	vLinearDepth = gl_Position.w;
+
+	float pointSize = getPointSize();
+	gl_PointSize = pointSize;
+
+}
+`
+
+Potree.Shaders["pointcloud_sm.fs"] = `
+precision mediump float;
+precision mediump int;
+
+varying vec3 vColor;
+varying float vLinearDepth;
+
+void main() {
+
+	//gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+	//gl_FragColor = vec4(vColor, 1.0);
+	//gl_FragColor = vec4(vLinearDepth, pow(vLinearDepth, 2.0), 0.0, 1.0);
+	gl_FragColor = vec4(vLinearDepth, vLinearDepth / 30.0, vLinearDepth / 30.0, 1.0);
 	
 }
 
@@ -704,34 +1121,109 @@ void main() {
 `
 
 Potree.Shaders["normalize.vs"] = `
+precision mediump float;
+precision mediump int;
+
+attribute vec3 position;
+attribute vec2 uv;
+
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewMatrix;
+
 varying vec2 vUv;
 
 void main() {
-    vUv = uv;
-
-    gl_Position =   projectionMatrix * modelViewMatrix * vec4(position,1.0);
+	vUv = uv;
+	gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
 }`
 
 Potree.Shaders["normalize.fs"] = `
 #extension GL_EXT_frag_depth : enable
 
-uniform sampler2D depthMap;
-uniform sampler2D texture;
+precision mediump float;
+precision mediump int;
+
+uniform sampler2D uWeightMap;
+uniform sampler2D uDepthMap;
 
 varying vec2 vUv;
 
 void main() {
-    float depth = texture2D(depthMap, vUv).g; 
+	float depth = texture2D(uDepthMap, vUv).r;
 	
-	if(depth <= 0.0){
+	if(depth >= 1.0){
+		discard;
+	}
+
+	gl_FragColor = vec4(depth, 1.0, 0.0, 1.0);
+
+	vec4 color = texture2D(uWeightMap, vUv); 
+	color = color / color.w;
+	
+	gl_FragColor = vec4(color.xyz, 1.0); 
+	
+	gl_FragDepthEXT = depth;
+
+
+}`
+
+Potree.Shaders["normalize_and_edl.fs"] = `
+#extension GL_EXT_frag_depth : enable
+
+precision mediump float;
+precision mediump int;
+
+uniform sampler2D uWeightMap;
+uniform sampler2D uEDLMap;
+uniform sampler2D uDepthMap;
+
+uniform float screenWidth;
+uniform float screenHeight;
+uniform vec2 neighbours[NEIGHBOUR_COUNT];
+uniform float edlStrength;
+uniform float radius;
+
+varying vec2 vUv;
+
+float response(float depth){
+	vec2 uvRadius = radius / vec2(screenWidth, screenHeight);
+	
+	float sum = 0.0;
+	
+	for(int i = 0; i < NEIGHBOUR_COUNT; i++){
+		vec2 uvNeighbor = vUv + uvRadius * neighbours[i];
+		
+		float neighbourDepth = texture2D(uEDLMap, uvNeighbor).a;
+
+		if(neighbourDepth != 0.0){
+			if(depth == 0.0){
+				sum += 100.0;
+			}else{
+				sum += max(0.0, depth - neighbourDepth);
+			}
+		}
+	}
+	
+	return sum / float(NEIGHBOUR_COUNT);
+}
+
+void main() {
+
+	float edlDepth = texture2D(uEDLMap, vUv).a;
+	float res = response(edlDepth);
+	float shade = exp(-res * 300.0 * edlStrength);
+
+	float depth = texture2D(uDepthMap, vUv).r;
+	if(depth >= 1.0 && res == 0.0){
 		discard;
 	}
 	
-    vec4 color = texture2D(texture, vUv); 
+	vec4 color = texture2D(uWeightMap, vUv); 
 	color = color / color.w;
-    
+	color = color * shade;
+
 	gl_FragColor = vec4(color.xyz, 1.0); 
-	
+
 	gl_FragDepthEXT = depth;
 }`
 
@@ -759,7 +1251,11 @@ uniform float edlStrength;
 uniform float radius;
 uniform float opacity;
 
-uniform sampler2D colorMap;
+//uniform sampler2D colorMap;
+uniform sampler2D uRegularColor;
+uniform sampler2D uRegularDepth;
+uniform sampler2D uEDLColor;
+uniform sampler2D uEDLDepth;
 
 varying vec2 vUv;
 
@@ -771,7 +1267,8 @@ float response(float depth){
 	for(int i = 0; i < NEIGHBOUR_COUNT; i++){
 		vec2 uvNeighbor = vUv + uvRadius * neighbours[i];
 		
-		float neighbourDepth = texture2D(colorMap, uvNeighbor).a;
+		float neighbourDepth = texture2D(uEDLColor, uvNeighbor).a;
+		neighbourDepth = (neighbourDepth == 1.0) ? 0.0 : neighbourDepth;
 
 		if(neighbourDepth != 0.0){
 			if(depth == 0.0){
@@ -786,18 +1283,23 @@ float response(float depth){
 }
 
 void main(){
-	vec4 color = texture2D(colorMap, vUv);
+	vec4 cReg = texture2D(uRegularColor, vUv);
+	vec4 cEDL = texture2D(uEDLColor, vUv);
 	
-	float depth = color.a;
+	float depth = cEDL.a;
+	depth = (depth == 1.0) ? 0.0 : depth;
 	float res = response(depth);
 	float shade = exp(-res * 300.0 * edlStrength);
-	
-	if(color.a == 0.0 && res == 0.0){
-		discard;
+
+	float dReg = texture2D(uRegularDepth, vUv).r;
+	float dEDL = texture2D(uEDLDepth, vUv).r;
+
+	if(dEDL < dReg){
+		gl_FragColor = vec4(cEDL.rgb * shade, opacity);
 	}else{
-		gl_FragColor = vec4(color.rgb * shade, opacity);
+		gl_FragColor = vec4(cReg.rgb * shade, cReg.a);
 	}
-	
+
 }
 `
 
