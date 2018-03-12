@@ -90,7 +90,7 @@ function Potree () {
 Potree.version = {
 	major: 1,
 	minor: 6,
-	suffix: 'PRE1'
+	suffix: ''
 };
 
 console.log('Potree ' + Potree.version.major + '.' + Potree.version.minor + Potree.version.suffix);
@@ -3093,9 +3093,7 @@ float getPointSize(){
 	float slope = tan(fov / 2.0);
 	float projFactor = -0.5 * uScreenHeight / (slope * vViewPosition.z);
 	
-	//float size = spacing * 0.01;
-
-	float r = uOctreeSpacing * 1.5;
+	float r = uOctreeSpacing * 1.7;
 	vRadius = r;
 	#if defined fixed_point_size
 		pointSize = size;
