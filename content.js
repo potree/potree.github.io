@@ -30,31 +30,31 @@ let settings = {
 		{"thumb": "thumbnails/examples/entwine_greyhound.png", "label": "Entwine / Greyhound", "url": "entwine_greyhound.html"},
 	],
 	"showcase": [
-		{"thumb": "thumbnails/showcase/chiller.jpg", "label": "Chiller", "url": "showcase/chiller.html"},
-		{"thumb": "thumbnails/showcase/chowilla.jpg", "label": "Chowilla", "url": "showcase/tern_auscover_chowilla.html"},
-		{"thumb": "thumbnails/showcase/cooler_tower.jpg", "label": "Cooler", "url": "showcase/cooler_tower.html"},
-		{"thumb": "thumbnails/showcase/dechen_cave.jpg", "label": "Dechen Cave", "url": "showcase/dechen_cave.html"},
-		{"thumb": "thumbnails/showcase/DoverMillRuins.jpg", "label": "Ruins", "url": "showcase/doverMillRuins.html"},
-		{"thumb": "thumbnails/showcase/eclepens.jpg", "label": "Eclepens", "url": "showcase/eclepens.html"},
-		{"thumb": "thumbnails/showcase/grab_15.jpg", "label": "Grave", "url": "showcase/grab_15.html"},
-		{"thumb": "thumbnails/showcase/heidentor.jpg", "label": "Heidentor", "url": "showcase/heidentor.html"},
-		{"thumb": "thumbnails/showcase/lake_tahoe.jpg", "label": "Lake Tahoe", "url": "showcase/lake_tahoe.html"},
-		{"thumb": "thumbnails/showcase/land_building.jpg", "label": "Building", "url": "showcase/land_building.html"},
-		{"thumb": "thumbnails/showcase/LDHI_module.jpg", "label": "LDHI", "url": "showcase/LDHI_module.html"},
-		{"thumb": "thumbnails/showcase/lifeboat.jpg", "label": "Lifeboat", "url": "showcase/lifeboat.html"},
-		{"thumb": "thumbnails/showcase/lion_head.jpg", "label": "Lion Head", "url": "showcase/lion_head_simone_garagnani.html"},
-		{"thumb": "thumbnails/showcase/matterhorn.jpg", "label": "Matterhorn", "url": "showcase/matterhorn.html"},
-		{"thumb": "thumbnails/showcase/overpass.jpg", "label": "Overpass", "url": "showcase/overpass.html"},
-		{"thumb": "thumbnails/showcase/pielach.jpg", "label": "Pielach", "url": "showcase/pielach.html"},
-		{"thumb": "thumbnails/showcase/pompei.jpg", "label": "pompei", "url": "showcase/pompei.html"},
-		{"thumb": "thumbnails/showcase/retz.jpg", "label": "Retz", "url": "showcase/retz.html"},
-		{"thumb": "thumbnails/showcase/santorini.jpg", "label": "Santorini", "url": "showcase/santorini.html"},
-		{"thumb": "thumbnails/showcase/skatepark.jpg", "label": "Skatepark", "url": "showcase/skatepark.html"},
-		{"thumb": "thumbnails/showcase/subsea_equipment.jpg", "label": "Subsea Eq.", "url": "showcase/subsea_equipment.html"},
-		{"thumb": "thumbnails/showcase/subseamanifold.jpg", "label": "Subsea Man.", "url": "showcase/subsea_manifold.html"},
-		{"thumb": "thumbnails/showcase/vol_total.jpg", "label": "Sorvilier", "url": "showcase/sorvilier.html"},
-		{"thumb": "thumbnails/showcase/westend_palais.jpg", "label": "Westend Palais", "url": "showcase/westend_palais.html"},
-		{"thumb": "thumbnails/showcase/whitby.jpg", "label": "Whitby", "url": "showcase/whitby.html"}
+		{"thumb": "thumbnails/showcase/chiller.jpg", "label": "Chiller", "url": "chiller.html"},
+		{"thumb": "thumbnails/showcase/chowilla.jpg", "label": "Chowilla", "url": "tern_auscover_chowilla.html"},
+		{"thumb": "thumbnails/showcase/cooler_tower.jpg", "label": "Cooler", "url": "cooler_tower.html"},
+		{"thumb": "thumbnails/showcase/dechen_cave.jpg", "label": "Dechen Cave", "url": "dechen_cave.html"},
+		{"thumb": "thumbnails/showcase/DoverMillRuins.jpg", "label": "Ruins", "url": "doverMillRuins.html"},
+		{"thumb": "thumbnails/showcase/eclepens.jpg", "label": "Eclepens", "url": "eclepens.html"},
+		{"thumb": "thumbnails/showcase/grab_15.jpg", "label": "Grave", "url": "grab_15.html"},
+		{"thumb": "thumbnails/showcase/heidentor.jpg", "label": "Heidentor", "url": "heidentor.html"},
+		{"thumb": "thumbnails/showcase/lake_tahoe.jpg", "label": "Lake Tahoe", "url": "lake_tahoe.html"},
+		{"thumb": "thumbnails/showcase/land_building.jpg", "label": "Building", "url": "land_building.html"},
+		{"thumb": "thumbnails/showcase/LDHI_module.jpg", "label": "LDHI", "url": "LDHI_module.html"},
+		{"thumb": "thumbnails/showcase/lifeboat.jpg", "label": "Lifeboat", "url": "lifeboat.html"},
+		{"thumb": "thumbnails/showcase/lion_head.jpg", "label": "Lion Head", "url": "lion_head_simone_garagnani.html"},
+		{"thumb": "thumbnails/showcase/matterhorn.jpg", "label": "Matterhorn", "url": "matterhorn.html"},
+		{"thumb": "thumbnails/showcase/overpass.jpg", "label": "Overpass", "url": "overpass.html"},
+		{"thumb": "thumbnails/showcase/pielach.jpg", "label": "Pielach", "url": "pielach.html"},
+		{"thumb": "thumbnails/showcase/pompei.jpg", "label": "pompei", "url": "pompei.html"},
+		{"thumb": "thumbnails/showcase/retz.jpg", "label": "Retz", "url": "retz.html"},
+		{"thumb": "thumbnails/showcase/santorini.jpg", "label": "Santorini", "url": "santorini.html"},
+		{"thumb": "thumbnails/showcase/skatepark.jpg", "label": "Skatepark", "url": "skatepark.html"},
+		{"thumb": "thumbnails/showcase/subsea_equipment.jpg", "label": "Subsea Eq.", "url": "subsea_equipment.html"},
+		{"thumb": "thumbnails/showcase/subseamanifold.jpg", "label": "Subsea Man.", "url": "subsea_manifold.html"},
+		{"thumb": "thumbnails/showcase/vol_total.jpg", "label": "Sorvilier", "url": "sorvilier.html"},
+		{"thumb": "thumbnails/showcase/westend_palais.jpg", "label": "Westend Palais", "url": "westend_palais.html"},
+		{"thumb": "thumbnails/showcase/whitby.jpg", "label": "Whitby", "url": "whitby.html"}
 	],
 	"thirdparty": [
 		{"thumb": "thumbnails/third/sitn.jpg", "label": "SITN", "url": "https://sitn.ne.ch/lidar/"},
@@ -95,7 +95,7 @@ function includeExamples(){
 function includeShowcase(){
 	let code = "";
 	for(let showcaseItem of settings.showcase){
-		code += `<a href="potree/showcase/${showcaseItem.url}" target="_blank" style="display: inline-block">
+		code += `<a href="potree/examples/showcase/${showcaseItem.url}" target="_blank" style="display: inline-block">
 			<div class="thumb" style="background-image: url('${showcaseItem.thumb}'); ">
 				<div class="thumb-label">${showcaseItem.label}</div>
 			</div>
