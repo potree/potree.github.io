@@ -27,7 +27,6 @@ let settings = {
 		{"thumb": "thumbnails/examples/features_sorvilier.png", "label": "Features (Sorvilier)", "url": "features_sorvilier.html"},
 		{"thumb": "thumbnails/examples/features_ca13.png", "label": "Features (CA13)", "url": "features_ca13.html"},
 		{"thumb": "thumbnails/examples/arena4d.png", "label": "Arena4D", "url": "arena4d.html"},
-		{"thumb": "thumbnails/examples/entwine_greyhound.png", "label": "Entwine / Greyhound", "url": "entwine_greyhound.html"},
 	],
 	"showcase": [
 		{"thumb": "thumbnails/showcase/chiller.jpg", "label": "Chiller", "url": "chiller.html"},
