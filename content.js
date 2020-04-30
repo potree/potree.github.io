@@ -72,7 +72,8 @@ let settings = {
 		{"thumb": "thumbnails/third/goldmine.jpg", "label": "", "url": "https://digitalreality.ethz.ch/goldmine/"},
 		{"thumb": "thumbnails/third/ricketts_sanctuary.jpg", "label": "", "url": "http://files.digitisation.unimelb.edu.au/potree/pointclouds/ricketts-test2.html"},
 		{"thumb": "thumbnails/third/hakea_macrorrhyncha.jpg", "label": "", "url": "http://files.digitisation.unimelb.edu.au/potree/pointclouds/hakea_macrorrhyncha.html"},
-		{"thumb": "thumbnails/third/wesmapping_grand_canyon.jpg", "label": "Wesmapping", "url": "http://wesmapping.com/blog/3d-visualization-of-the-grand-canyon-with-potree/"}
+		{"thumb": "thumbnails/third/wesmapping_grand_canyon.jpg", "label": "Wesmapping", "url": "http://wesmapping.com/blog/3d-visualization-of-the-grand-canyon-with-potree/"},
+		{"thumb": "thumbnails/third/sao-paulo-city.jpg", "label": "São Paulo City", "url": "https://visualizador-laz-web.s3-sa-east-1.amazonaws.com/index.html"}
 	]
 }
 
